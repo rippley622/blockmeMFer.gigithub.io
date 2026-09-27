@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Kevin H's amazing proxy</title>
+<link rel="icon" href="https://www.google.com/s2/favicons?domain=classroom.google.com&sz=64"/>
+<style>
+:root{
+  --bg:#0b0c0f;--surface:#15171c;--surface2:#1c1e25;--fg:#eceef1;--muted:#8b909a;
+  --border:rgba(236,238,241,.12);--accent:#c8cdd6;--accent-fg:#0b0c0f;--prix:#c9a227;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 "Segoe UI",system-ui,sans-serif}
+body{display:flex;flex-direction:column;min-height:100dvh}
+#chrome{display:flex;flex-direction:column;background:var(--surface);border-bottom:1px solid var(--border)}
+.tabs{display:flex;gap:4px;padding:6px 8px 0;overflow-x:auto}
+.tab{display:flex;align-items:center;gap:6px;max-width:180px;padding:6px 8px;border-radius:8px 8px 0 0;background:transparent;color:var(--muted);border:1px solid transparent;cursor:pointer;font:inherit}
+.tab.on{background:var(--bg);color:var(--fg);border-color:var(--border);border-bottom-color:var(--bg)}
+.tab b{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500;font-size:12px}
+.tab x{opacity:.5}
+.row{display:flex;gap:6px;align-items:center;padding:8px}
+.row input[type=text]{flex:1;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--fg);padding:0 12px;font:inherit}
+button.ic, .ic{height:32px;min-width:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--fg);cursor:pointer;font:inherit;font-size:12px}
+button.ic:hover{border-color:rgba(236,238,241,.28)}
+#stage{flex:1;min-height:0;position:relative;background:var(--bg) center/cover no-repeat}
+#home,#game,#prix,#set{position:absolute;inset:0;overflow:auto}
+#home{padding:32px 16px}
+.wrap{max-width:920px;margin:0 auto}
+.brand{text-align:center;font-size:28px;letter-spacing:.18em;text-transform:uppercase;margin:8px 0 18px}
+nav.hub{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+nav.hub button{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+nav.hub button.on{background:var(--surface2);color:var(--fg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.card{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;text-align:left;color:inherit}
+.card:hover{border-color:rgba(236,238,241,.28);transform:translateY(-1px)}
+.card img,.card .mark{width:18px;height:18px;border-radius:4px;flex:none;margin-top:1px;background:var(--surface2)}
+.card .mark{display:grid;place-items:center;font-size:10px;color:var(--muted)}
+.card h3{margin:0 0 4px;font-size:13px}
+.card p{margin:0;color:var(--muted);font-size:11px}
+iframe.page{width:100%;height:100%;border:0;background:#fff}
+#prix{display:flex;flex-direction:column;background:#050505;color:#f5f0e6}
+#prix .msgs{flex:1;overflow:auto;padding:16px}
+#prix .bubble{max-width:720px;margin:0 auto 12px;padding:12px 14px;border-radius:12px;background:#141414;border:1px solid #2a2418}
+#prix .bubble.me{background:#1a160f}
+#prix form{display:flex;gap:8px;padding:12px;border-top:1px solid #2a2418}
+#prix textarea{flex:1;min-height:48px;resize:none;background:#0c0c0c;color:#f5f0e6;border:1px solid #2a2418;border-radius:8px;padding:8px;font:inherit}
+#prix button{background:#c9a227;color:#0a0a0a;border:0;border-radius:8px;padding:0 16px;cursor:pointer;font-weight:600}
+#set{padding:24px;max-width:560px}
+label.row2{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0}
+canvas.g{display:block;margin:20px auto;background:#111;border-radius:8px}
+.note{color:var(--muted);font-size:12px;text-align:center;margin:8px 0 16px}
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div class="tabs" id="tabs"></div>
+  <div class="row">
+    <button class="ic" id="back">←</button>
+    <button class="ic" id="fwd">→</button>
+    <button class="ic" id="homeBtn">Home</button>
+    <input id="omni" type="text" placeholder="Search or enter a site" autocomplete="off"/>
+    <button class="ic" id="goBtn">Go</button>
+    <button class="ic" id="prixBtn">Prix</button>
+    <button class="ic" id="blankBtn">Blank</button>
+    <button class="ic" id="panicBtn">Panic</button>
+    <button class="ic" id="setBtn">Settings</button>
+  </div>
+</div>
+<div id="stage">
+  <div id="home"></div>
+  <div id="game" hidden></div>
+  <div id="prix" hidden>
+    <div class="msgs" id="prixMsgs"></div>
+    <form id="prixForm"><textarea id="prixIn" placeholder="Ask Prix…"></textarea><button type="submit">Send</button></form>
+  </div>
+  <div id="set" hidden></div>
+  <iframe class="page" id="web" hidden sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-pointer-lock" allow="autoplay; fullscreen; gamepad; clipboard-write; encrypted-media; pointer-lock"></iframe>
+</div>
+<script>
+const APPS = [
+  ["CloudMoon","https://web.cloudmoonapp.com/"],["YouTube","https://www.youtube.com/"],["TikTok","https://www.tiktok.com/"],
+  ["Discord","https://discord.com/app"],["Spotify","https://open.spotify.com/"],["Twitch","https://www.twitch.tv/"],
+  ["Reddit","https://www.reddit.com/"],["Instagram","https://www.instagram.com/"],["Photopea","https://www.photopea.com/"],
+  ["ChatGPT","https://chatgpt.com/"],["Gemini","https://gemini.google.com/"],["VS Code","https://vscode.dev/"],
+  ["GitHub","https://github.com/"],["Replit","https://replit.com/"],["Scratch","https://scratch.mit.edu/"],
+  ["Gmail","https://mail.google.com/"],["Classroom","https://classroom.google.com/"],["Drive","https://drive.google.com/"],
+  ["Docs","https://docs.google.com/"],["Wikipedia","https://en.wikipedia.org/"],["Desmos","https://www.desmos.com/calculator"],
+  ["Khan Academy","https://www.khanacademy.org/"],["Quizlet","https://quizlet.com/"],["Canva","https://www.canva.com/"],
+  ["Poki","https://poki.com/"],["CrazyGames","https://www.crazygames.com/"],["itch.io","https://itch.io/games/html5"],
+  ["CoolMath","https://www.coolmathgames.com/"],["Now.gg","https://now.gg/"],["GeForce Now","https://play.geforcenow.com/"],
+  ["Xbox Cloud","https://www.xbox.com/play"],["Archive Arcade","https://archive.org/details/internetarcade"]
+];
+const GAMES = [
+  ["2048","play:2048"],["Snake","play:snake"],["Dino","play:dino"],["Mines","play:mines"],["Clicker","play:clicker"],
+  ["Slope","https://slopegame.io/"],["1v1.lol","https://1v1.lol/"],["Krunker","https://krunker.io/"],
+  ["Shell Shockers","https://shellshock.io/"],["Smash Karts","https://smashkarts.io/"],["Cookie Clicker","https://orteil.dashnet.org/cookieclicker/"],
+  ["Retro Bowl","https://retrobowl.me/"],["Eaglercraft","https://eaglercraft.com/"],["Minecraft Classic","https://classic.minecraft.net/"],
+  ["Run 3","https://player03.com/run3/"],["Geometry Dash","https://geometrylite.io/"],["OvO","https://ovocubegame.com/"],
+  ["Agar.io","https://agar.io/"],["Slither.io","https://slither.io/"],["Diep.io","https://diep.io/"],
+  ["Paper.io 2","https://paper-io.com/"],["Bonk.io","https://bonk.io/"],["Hole.io","https://hole-io.com/"],
+  ["Drift Hunters","https://drift-hunters.co/"],["Moto X3M","https://motox3m.io/"],["Drift Boss","https://driftboss.io/"],
+  ["Tunnel Rush","https://tunnelrush.io/"],["Snow Rider 3D","https://snowrider3d.io/"],["Vex 5","https://vex5.io/"],
+  ["Vex 7","https://vex7.io/"],["Stickman Hook","https://stickmanhook.io/"],["Basket Random","https://basketrandom.com/"],
+  ["Chess.com","https://www.chess.com/play/online"],["Lichess","https://lichess.org/"],["Tetris","https://tetris.com/play-tetris"],
+  ["Wordle","https://www.nytimes.com/games/wordle/index.html"],["Pac-Man","https://www.google.com/logos/2010/pacman10-i.html"],
+  ["Subway Surfers","https://poki.com/en/g/subway-surfers"],["Temple Run 2","https://poki.com/en/g/temple-run-2"],
+  ["Crossy Road","https://poki.com/en/g/crossy-road"],["Internet Arcade","https://archive.org/details/internetarcade"],
+  ["EmulatorJS","https://demo.emulatorjs.org/"],["Poki","https://poki.com/"],["CrazyGames","https://www.crazygames.com/"],
+  ["Y8","https://www.y8.com/"],["Friv","https://www.friv.com/"],["IO Games","https://iogames.space/"]
+];
+const CLOAKS = {
+  classroom: {title:"Classes", icon:"https://www.google.com/s2/favicons?domain=classroom.google.com&sz=64", panic:"https://classroom.google.com/"},
+  docs: {title:"Google Docs", icon:"https://www.google.com/s2/favicons?domain=docs.google.com&sz=64", panic:"https://docs.google.com/"},
+  drive: {title:"My Drive", icon:"https://www.google.com/s2/favicons?domain=drive.google.com&sz=64", panic:"https://drive.google.com/"},
+  gmail: {title:"Inbox", icon:"https://www.google.com/s2/favicons?domain=mail.google.com&sz=64", panic:"https://mail.google.com/"},
+  wiki: {title:"Wikipedia", icon:"https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64", panic:"https://en.wikipedia.org/"},
+  google: {title:"Google", icon:"https://www.google.com/s2/favicons?domain=google.com&sz=64", panic:"https://www.google.com/search?q=calculator"}
+};
+const PROXIES = [
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://corsproxy.io/?" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+];
+
+const store = {
+  get(){ try { return JSON.parse(localStorage.getItem("nimbus.html.v1")||"{}"); } catch { return {}; } },
+  set(p){ localStorage.setItem("nimbus.html.v1", JSON.stringify({...this.get(), ...p})); }
+};
+let S = Object.assign({ cloak:"classroom", panicKey:"F9", accent:"#c8cdd6", bg:"", history:[] }, store.get());
+let view = "home";
+let hub = "home";
+let tabs = [{id:1, title:"New tab", url:"", kind:"home"}];
+let tabId = 1;
+let active = 1;
+let prixChat = [];
+
+function $(id){ return document.getElementById(id); }
+function show(id){
+  ["home","game","prix","set","web"].forEach(k => { const el=$(k); if(el) el.hidden = k!==id; });
+}
+function applyTheme(){
+  document.documentElement.style.setProperty("--accent", S.accent||"#c8cdd6");
+  $("stage").style.backgroundImage = S.bg ? `url(${JSON.stringify(S.bg).slice(1,-1)})` : "none";
+  const c = CLOAKS[S.cloak] || CLOAKS.classroom;
+  document.title = c.title;
+  let link = document.querySelector("link[rel=icon]");
+  if(!link){ link=document.createElement("link"); link.rel="icon"; document.head.appendChild(link); }
+  link.href = c.icon;
+}
+function renderTabs(){
+  $("tabs").innerHTML = tabs.map(t => `<button class="tab ${t.id===active?"on":""}" data-id="${t.id}"><b>${esc(t.title)}</b><x data-x="${t.id}">✕</x></button>`).join("")
+    + `<button class="tab" id="newTab">+</button>`;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&","<":"<",">":">","\"":"""}[c])); }
+function current(){ return tabs.find(t => t.id===active); }
+function goHome(){
+  const t = current(); t.url=""; t.title="New tab"; t.kind="home";
+  $("omni").value=""; view="home"; show("home"); renderHome(); renderTabs();
+}
+function iconFor(u){
+  if(!u || u.startsWith("play:") || u==="prix") return "";
+  try { return "https://www.google.com/s2/favicons?domain="+new URL(u).hostname+"&sz=64"; } catch { return ""; }
+}
+function cardBtn(n,u){
+  const ic = iconFor(u);
+  const hint = u.startsWith("play:") ? "built-in" : u==="prix" ? "chat" : u.replace(/^https?:\/\//,"");
+  const mark = ic ? `<img src="${ic}" alt="" width="18" height="18"/>` : `<span class="mark">${esc(n).slice(0,1)}</span>`;
+  return `<button class="card" data-url="${esc(u)}">${mark}<span><h3>${esc(n)}</h3><p>${esc(hint)}</p></span></button>`;
+}
+function filtered(list){
+  const q = ($("omni").value||"").trim().toLowerCase();
+  if(!q || /^https?:/i.test(q) || q.includes(".")) return list;
+  return list.filter(([n,u]) => n.toLowerCase().includes(q) || u.toLowerCase().includes(q));
+}
+function renderHome(){
+  const list = hub==="apps" ? APPS : GAMES;
+  const home = [["2048","play:2048"],["Snake","play:snake"],["Dino","play:dino"],["Prix","prix"],["CloudMoon","https://web.cloudmoonapp.com/"],["Poki","https://poki.com/"],["CrazyGames","https://www.crazygames.com/"],["YouTube","https://www.youtube.com/"],["Discord","https://discord.com/app"],["Wikipedia","https://en.wikipedia.org/"],["Scratch","https://scratch.mit.edu/"],["itch.io","https://itch.io/games/html5"]];
+  const source = hub==="home" ? home : list;
+  const shown = filtered(source);
+  $("home").innerHTML = `<div class="wrap">
+    <nav class="hub">
+      <button data-h="home" class="${hub==="home"?"on":""}">Home</button>
+      <button data-h="games" class="${hub==="games"?"on":""}">Games</button>
+      <button data-h="apps" class="${hub==="apps"?"on":""}">Apps</button>
+    </nav>
+    <div class="brand">Kevin H's amazing proxy</div>
+    <p class="note">${GAMES.length} games · ${APPS.length} apps. Built-in games stay in this tab. CloudMoon loads in this tab.</p>
+    <div class="grid">${shown.map(([n,u])=>cardBtn(n,u)).join("")}</div>
+    ${shown.length?"":`<p class="note">Nothing matches. Hit Enter to search the web.</p>`}
+  </div>`;
+}
+function openUrl(raw){
+  let v = (raw||"").trim();
+  if(!v) return;
+  if(v==="prix") return openPrix();
+  if(!/^https?:/i.test(v) && !v.startsWith("play:")){
+    const q = v.toLowerCase();
+    const pool = [["Prix","prix"]].concat(APPS, GAMES);
+    const hit = pool.find(([n]) => n.toLowerCase()===q) || pool.filter(([n]) => n.toLowerCase().startsWith(q));
+    const pick = Array.isArray(hit) ? (hit.length===1 ? hit[0] : null) : hit;
+    if(pick) v = pick[1];
+    else if(/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(v)) v = "https://" + v;
+    else v = "https://duckduckgo.com/?q=" + encodeURIComponent(v);
+  }
+  const t = current(); t.url=v; t.title = v.replace(/^https?:\/\//,"").slice(0,40); t.kind="web";
+  $("omni").value = v.startsWith("play:") ? v.slice(5) : v;
+  S.history = [v, ...(S.history||[]).filter(x=>x!==v)].slice(0,40);
+  store.set({history:S.history});
+  renderTabs();
+  if(v.startsWith("play:")) return play(v.slice(5));
+  if (/cloudmoon/i.test(v)) {
+    view="web"; show("web");
+    const frame = $("web");
+    frame.removeAttribute("srcdoc");
+    frame.src = v;
+    return;
+  }
+  browse(v);
+}
+async function browse(url){
+  view="web"; show("web");
+  const frame = $("web");
+  frame.removeAttribute("src");
+  frame.removeAttribute("srcdoc");
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    try {
+      const r = await fetch("/api/go?url=" + encodeURIComponent(url), { credentials: "include", signal: AbortSignal.timeout(20000) });
+      const html = await r.text();
+      if (r.ok && html && (html.includes("data-veil") || /<html/i.test(html))) {
+        frame.srcdoc = html.replace(
+          /(__sveltekit_[A-Za-z0-9_]*\s*=\s*\{[^}]*?\bbase:\s*)(["'][^"']*["'])/,
+          '$1(location.protocol==="about:"?"srcdoc":"/")'
+        );
+        return;
+      }
+    } catch (e) {}
+  }
+  await tryProxies(url);
+}
+async function tryProxies(url){
+  const frame = $("web");
+  for(const make of PROXIES){
+    try{
+      const r = await fetch(make(url), {signal: AbortSignal.timeout(8000)});
+      if(!r.ok) continue;
+      let html = await r.text();
+      if(html.length > 900000) html = html.replace(/<script[\s\S]*?<\/script>/gi,"");
+      const base = url.replace(/[^/]+$/,"");
+      html = html.replace(/<head[^>]*>/i, m => m + `<base href="${base}">`);
+      frame.removeAttribute("src");
+      frame.srcdoc = html;
+      return;
+    }catch(e){}
+  }
+  frame.removeAttribute("src");
+  frame.srcdoc = `<body style="font:15px system-ui;background:#0b0c0f;color:#eceef1;display:grid;place-items:center;height:100vh;margin:0"><div style="max-width:28rem;text-align:center;padding:24px"><h1 style="font-size:16px">Can't load that site in a file</h1><p style="color:#8b909a">A static HTML page has no real proxy server. Built-in games still work. <a href="${url.replace(/"/g,"%22")}" target="_blank" rel="noopener" style="color:#c8cdd6">Open in a new tab</a></p></div></body>`;
+}
+function play(name){
+  view="game"; show("game");
+  const el = $("game");
+  if(name==="2048") return game2048(el);
+  if(name==="snake") return gameSnake(el);
+  if(name==="dino") return gameDino(el);
+  if(name==="mines") return gameMines(el);
+  if(name==="clicker") return gameClicker(el);
+  el.innerHTML = `<p class="note">Unknown game</p>`;
+}
+function openPrix(){
+  // Hosted drop includes the full Prix app next to this file.
+  if (location.protocol !== "file:") {
+    location.href = "prix.html";
+    return;
+  }
+  const t=current(); t.title="Prix"; t.url="prix"; t.kind="prix";
+  view="prix"; show("prix"); renderTabs();
+}
+function renderSettings(){
+  $("set").innerHTML = `<h2>Settings</h2>
+    <label class="row2">Tab cloak
+      <select id="cloak">${Object.keys(CLOAKS).map(k=>`<option value="${k}" ${S.cloak===k?"selected":""}>${k}</option>`).join("")}</select>
+    </label>
+    <label class="row2">Panic key <input id="pkey" value="${esc(S.panicKey)}" style="width:80px"/></label>
+    <label class="row2">Accent <input id="accent" type="color" value="${S.accent||"#c8cdd6"}"/></label>
+    <label class="row2">Background image URL <input id="bg" type="text" value="${esc(S.bg||"")}" style="flex:1"/></label>
+    <p class="note">Panic opens the real cloak site in a new tab and does not close this file.</p>
+    <p class="note">Save this file (Ctrl+S) and reopen it from Drive / Chromebook Files if .xai is blocked.</p>`;
+  $("cloak").onchange = e => { S.cloak=e.target.value; store.set({cloak:S.cloak}); applyTheme(); };
+  $("pkey").onchange = e => { S.panicKey=e.target.value||"F9"; store.set({panicKey:S.panicKey}); };
+  $("accent").oninput = e => { S.accent=e.target.value; store.set({accent:S.accent}); applyTheme(); };
+  $("bg").onchange = e => { S.bg=e.target.value.trim(); store.set({bg:S.bg}); applyTheme(); };
+}
+function panic(){
+  const c = CLOAKS[S.cloak]||CLOAKS.classroom;
+  window.open(c.panic, "_blank", "noopener");
+}
+$("tabs").onclick = e => {
+  const x = e.target.closest("[data-x]");
+  if(x){
+    const id = +x.dataset.x;
+    tabs = tabs.filter(t => t.id!==id);
+    if(!tabs.length) tabs=[{id:++tabId,title:"New tab",url:"",kind:"home"}];
+    if(!tabs.some(t=>t.id===active)) active = tabs[0].id;
+    renderTabs(); goHome(); return;
+  }
+  if(e.target.id==="newTab" || e.target.closest("#newTab")){
+    tabs.push({id:++tabId,title:"New tab",url:"",kind:"home"}); active=tabId; renderTabs(); goHome(); return;
+  }
+  const b = e.target.closest("[data-id]");
+  if(b){ active=+b.dataset.id; const t=current(); renderTabs(); if(!t.url||t.kind==="home") goHome(); else if(t.kind==="prix") openPrix(); else openUrl(t.url); }
+};
+$("home").onclick = e => {
+  const h = e.target.closest("[data-h]");
+  if(h){ hub=h.dataset.h; renderHome(); return; }
+  const c = e.target.closest("[data-url]");
+  if(c) openUrl(c.dataset.url);
+};
+$("goBtn").onclick = () => openUrl($("omni").value);
+$("omni").onkeydown = e => { if(e.key==="Enter") openUrl($("omni").value); };
+$("omni").oninput = () => { if(view==="home") renderHome(); };
+$("homeBtn").onclick = goHome;
+$("prixBtn").onclick = openPrix;
+$("setBtn").onclick = () => { view="set"; show("set"); renderSettings(); };
+$("panicBtn").onclick = panic;
+$("blankBtn").onclick = () => {
+  const w = window.open("about:blank");
+  if(!w) return;
+  w.document.open();
+  w.document.write("<!DOCTYPE html><title>Classes</title><p style='font:14px system-ui;padding:24px'>Drop nimbus.html on this about:blank tab, or paste this file’s URL. This blank page is just a cover.</p>");
+  w.document.close();
+};
+$("back").onclick = () => history.back();
+$("fwd").onclick = () => history.forward();
+document.addEventListener("keydown", e => {
+  if(e.target.matches("input,textarea")) return;
+  if(e.key === S.panicKey || (S.panicKey==="F9" && e.key==="F9")){ e.preventDefault(); panic(); }
+});
+$("prixForm").onsubmit = async e => {
+  e.preventDefault();
+  const prompt = $("prixIn").value.trim();
+  if(!prompt) return;
+  $("prixIn").value="";
+  prixChat.push({role:"user", content:prompt});
+  paintPrix();
+  const box = document.createElement("div"); box.className="bubble"; box.textContent="…";
+  $("prixMsgs").appendChild(box);
+  try{
+    let reply = "";
+    try {
+      const local = await fetch("/api/prix", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] })
+      });
+      if (local.ok) {
+        const j = await local.json();
+        reply = j.text || "";
+      }
+    } catch (e0) {}
+    if (!reply) {
+      const r = await fetch("https://text.pollinations.ai/" + encodeURIComponent("You are Prix, a concise helpful tutor. " + prompt));
+      reply = await r.text();
+    }
+    prixChat.push({role:"assistant", content:reply});
+    box.textContent = reply;
+  }catch(err){
+    box.textContent = "Prix needs network.";
+  }
+};
+function paintPrix(){
+  $("prixMsgs").innerHTML = prixChat.map(m => `<div class="bubble ${m.role==="user"?"me":""}">${esc(m.content)}</div>`).join("");
+}
+
+function game2048(root){
+  let g=Array.from({length:16},()=>0), score=0;
+  function add(){ const e=g.map((v,i)=>v? -1:i).filter(i=>i>=0); if(e.length) g[e[Math.floor(Math.random()*e.length)]]=Math.random()<.9?2:4; }
+  add(); add();
+  function slide(row){
+    const a=row.filter(Boolean); for(let i=0;i<a.length-1;i++) if(a[i]===a[i+1]){a[i]*=2;score+=a[i];a[i+1]=0;} return [...a.filter(Boolean),0,0,0,0].slice(0,4);
+  }
+  function rot(k){ let n=g.slice(); for(let t=0;t<k;t++){ const m=Array(16); for(let r=0;r<4;r++) for(let c=0;c<4;c++) m[c*4+3-r]=n[r*4+c]; n=m;} return n; }
+  function move(dir){
+    let n=rot(dir); for(let r=0;r<4;r++) n.splice(r*4,4,...slide(n.slice(r*4,r*4+4))); n=rot((4-dir)%4); if(n.some((v,i)=>v!==g[i])){ g=n; add(); draw(); }
+  }
+  function draw(){
+    root.innerHTML = `<div style="max-width:320px;margin:24px auto"><div style="display:flex;justify-content:space-between"><b>2048</b><span>${score}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px">${g.map(v=>`<div style="height:70px;border-radius:8px;display:grid;place-items:center;background:${v?"#3d3350":"#1c1e25"};font-weight:700">${v||""}</div>`).join("")}</div>
+      <p class="note">Arrow keys</p></div>`;
+  }
+  root.onkeydown = null;
+  window.onkeydown = e => { if(view!=="game") return; const m={ArrowLeft:0,ArrowUp:3,ArrowRight:2,ArrowDown:1}; if(m[e.key]!=null){ e.preventDefault(); move(m[e.key]); } };
+  draw();
+}
+function gameSnake(root){
+  const c=document.createElement("canvas"); c.width=c.height=360; c.className="g";
+  root.innerHTML="<p class='note'>Arrow keys. Don't hit yourself.</p>"; root.appendChild(c);
+  const x=c.getContext("2d"); let s=[{x:8,y:8}], d={x:1,y:0}, a={x:12,y:8}, dead=false;
+  const tick=()=>{
+    if(dead) return;
+    const h={x:s[0].x+d.x,y:s[0].y+d.y};
+    if(h.x<0||h.y<0||h.x>17||h.y>17||s.some(p=>p.x===h.x&&p.y===h.y)){ dead=true; return; }
+    s.unshift(h); if(h.x===a.x&&h.y===a.y) a={x:Math.floor(Math.random()*18),y:Math.floor(Math.random()*18)}; else s.pop();
+    x.fillStyle="#0b0c0f"; x.fillRect(0,0,360,360);
+    x.fillStyle="#c9a227"; x.fillRect(a.x*20,a.y*20,18,18);
+    x.fillStyle="#eceef1"; s.forEach(p=>x.fillRect(p.x*20,p.y*20,18,18));
+  };
+  const iv=setInterval(()=>{ if(view!=="game") return clearInterval(iv); tick(); }, 120);
+  window.onkeydown=e=>{ const k={ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0}}; if(k[e.key]&& (k[e.key].x!==-d.x||k[e.key].y!==-d.y)) d=k[e.key]; };
+}
+function gameDino(root){
+  const c=document.createElement("canvas"); c.width=640; c.height=180; c.className="g";
+  root.innerHTML="<p class='note'>Space / click to jump</p>"; root.appendChild(c);
+  const x=c.getContext("2d"); let y=0,vy=0,obs=640,speed=6,alive=true,t=0;
+  function loop(){
+    if(view!=="game") return;
+    t++; if(!alive){ x.fillStyle="#eceef1"; x.fillText("tap to retry", 280, 90); return requestAnimationFrame(loop); }
+    vy-=0.7; y+=vy; if(y<0){y=0;vy=0;}
+    obs-=speed; if(obs<-20){obs=640+Math.random()*200; speed=Math.min(12,speed+0.05);}
+    const hit = obs<50&&obs>10&&y<36;
+    if(hit) alive=false;
+    x.fillStyle="#0b0c0f"; x.fillRect(0,0,640,180);
+    x.fillStyle="#8b909a"; x.fillRect(0,150,640,2);
+    x.fillStyle="#eceef1"; x.fillRect(24,120-y,28,30);
+    x.fillStyle="#c9a227"; x.fillRect(obs,128,18,22);
+    requestAnimationFrame(loop);
+  }
+  function jump(){ if(!alive){alive=true;y=0;vy=0;obs=640;speed=6;} else if(y===0) vy=11; }
+  c.onclick=jump; window.onkeydown=e=>{ if(e.code==="Space"){ e.preventDefault(); jump(); } };
+  loop();
+}
+function gameMines(root){
+  const n=8, bombs=10; let cells=Array(n*n).fill(0).map(()=>({m:false,o:false,f:false,n:0}));
+  let placed=false;
+  function place(safe){
+    let left=bombs; while(left){ const i=Math.floor(Math.random()*cells.length); if(i===safe||cells[i].m) continue; cells[i].m=true; left--; }
+    cells.forEach((c,i)=>{ let v=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const x=i%n+dx,y=(i/n|0)+dy; if(x>=0&&y>=0&&x<n&&y<n&&cells[y*n+x].m) v++; } c.n=v; });
+  }
+  function open(i){ if(cells[i].o||cells[i].f) return; if(!placed){ place(i); placed=true; } cells[i].o=true; if(!cells[i].m && cells[i].n===0){ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const x=i%n+dx,y=(i/n|0)+dy; if(x>=0&&y>=0&&x<n&&y<n) open(y*n+x);} } draw(); }
+  function draw(){
+    root.innerHTML = `<div style="width:288px;margin:24px auto;display:grid;grid-template-columns:repeat(8,1fr);gap:4px">${cells.map((c,i)=>`<button style="height:32px;border:0;border-radius:4px;background:${c.o?(c.m?"#a33":"#1c1e25"):"#15171c"};color:#eceef1">${c.o?(c.m?"*":c.n||""):(c.f?"⚑":"")}</button>`).join("")}</div><p class="note">Click to open</p>`;
+    [...root.querySelectorAll("button")].forEach((b,i)=> b.onclick=()=>open(i));
+  }
+  draw();
+}
+function gameClicker(root){
+  let n = +(localStorage.getItem("nimbus.click")||0);
+  function draw(){ root.innerHTML = `<div style="text-align:center;padding:48px"><div style="font-size:42px;margin-bottom:12px">$${n}</div><button class="ic" style="height:48px;padding:0 24px;font-size:16px" id="hit">Make money</button></div>`; $("hit").onclick=()=>{ n++; localStorage.setItem("nimbus.click",n); draw(); }; }
+  draw();
+}
+
+applyTheme(); renderTabs(); renderHome(); show("home");
+</script>
+</body>
+</html>
