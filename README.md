@@ -17,7 +17,6 @@ This folder is the Nimbus project only. Grok Build skills, screenshots, `.vercel
 | `static-drop/` | Ready-to-host folder (`index.html` = hub, `prix.html` = full Prix) |
 | `nimbus-catchup.md` | Short project brief |
 
-Live Grok URL (if still up): https://longbeach-algebra.grok.me
 
 ## Run the full app locally
 
