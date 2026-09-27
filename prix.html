@@ -2977,7 +2977,7 @@ function callFreeAI(currentText){
       method: "POST",
       credentials: "omit",
       headers: { "content-type": "application/json", accept: "text/event-stream, application/json" },
-      body: JSON.stringify({ messages: buildApiMessages(), prompt: shortPrompt, stream: true, provider: normalizeBrain(settings.textModel) }),
+      body: JSON.stringify({ messages: buildApiMessages(), prompt: shortPrompt, stream: true, provider: normalizeBrain(settings.textModel), xaiKey: xaiKey, openAiKey: openKey }),
       cache: "no-store"
     }).then(function(r){
       var type = (r.headers.get("content-type")||"");
@@ -2986,6 +2986,7 @@ function callFreeAI(currentText){
           if(!r.ok) throw new Error((j && j.error) || ("HTTP "+r.status));
           var t = j && j.text;
           if(!t) throw new Error("Empty proxy reply");
+          if(j.via === "retry" || /Couldn't reach a live model/i.test(String(t))) throw new Error(j.error || "proxy miss");
           if(onDelta) onDelta(t, t);
           return { text: String(t).trim(), via: j.via || "nimbus" };
         });
@@ -3026,13 +3027,14 @@ function callFreeAI(currentText){
       method: "POST",
       credentials: "omit",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messages: buildApiMessages(), prompt: shortPrompt, provider: normalizeBrain(settings.textModel) }),
+      body: JSON.stringify({ messages: buildApiMessages(), prompt: shortPrompt, provider: normalizeBrain(settings.textModel), xaiKey: xaiKey, openAiKey: openKey }),
       cache: "no-store"
     }).then(function(r){
       return r.json().then(function(j){
         if(!r.ok) throw new Error((j && j.error) || ("HTTP "+r.status));
         var t = j && j.text;
         if(!t) throw new Error("Empty proxy reply");
+        if(j.via === "retry" || /Couldn't reach a live model/i.test(String(t))) throw new Error(j.error || "proxy miss");
         return { text: String(t).trim(), via: j.via || "nimbus" };
       });
     });
@@ -3064,7 +3066,9 @@ function callFreeAI(currentText){
           id: id,
           messages: buildApiMessages(),
           prompt: shortPrompt,
-          provider: brain
+          provider: brain,
+          xaiKey: xaiKey,
+          openAiKey: openKey
         }, "*");
       } catch (err) {
         clearTimeout(timer);
@@ -3075,12 +3079,23 @@ function callFreeAI(currentText){
   }
 
   var brain = normalizeBrain(settings.textModel);
-  return tryParent().catch(function(){
+  function afterKeys(){
     return tryVeil().catch(function(){
-      if(brain === "chatgpt" && openKey) return tryOpenAI();
+      if(openKey) return tryOpenAI();
       return tryPollinationsModel(brain === "gemini" ? "gemini" : brain === "claude" ? "claude" : "openai");
     });
-  });
+  }
+  if(brain === "grok" || !brain){
+    return tryXAI().catch(function(){
+      return tryParent().catch(afterKeys);
+    });
+  }
+  if(brain === "chatgpt" && openKey){
+    return tryOpenAI().catch(function(){
+      return tryParent().catch(afterKeys);
+    });
+  }
+  return tryParent().catch(afterKeys);
 }
 
 
